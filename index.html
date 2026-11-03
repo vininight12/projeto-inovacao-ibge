@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel de Inovação — IBGE</title>
+<style>
+:root{--bg:#f4f7fb;--card:#fff;--ink:#182230;--muted:#5b6677;--blue:#174ea6;--line:#dce3ed}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+header{background:#123b70;color:white;padding:32px 20px}header .wrap,main{max-width:1100px;margin:auto}
+.eyebrow{text-transform:uppercase;letter-spacing:.1em;font-size:.78rem;opacity:.85}
+h1{margin:.35rem 0;font-size:clamp(1.8rem,4vw,2.8rem)}header p{max-width:750px;margin:.4rem 0 0;color:#e4edfb}
+main{padding:24px 18px 50px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px;box-shadow:0 5px 20px #18375a0a}
+h2{font-size:1.2rem;margin:0 0 10px}p{margin:.4rem 0;color:var(--muted)}
+label{display:block;font-weight:650;margin:12px 0 6px}input{width:100%;padding:12px;border:1px solid #b9c5d5;border-radius:8px;font:inherit}
+button{border:0;background:var(--blue);color:white;font:inherit;font-weight:650;padding:11px 16px;border-radius:8px;margin-top:12px;cursor:pointer}
+button:disabled{opacity:.6;cursor:wait}.status{margin-top:12px;padding:12px;border-radius:8px;background:#eef3fa;color:#263b57;overflow-wrap:anywhere}
+.small{font-size:.9rem}.table-wrap{overflow:auto;max-height:500px}table{border-collapse:collapse;width:100%;font-size:.9rem}th,td{text-align:left;padding:9px;border-bottom:1px solid var(--line);vertical-align:top}th{background:#f1f5fa;position:sticky;top:0}
+a{color:#174ea6}footer{padding:20px;border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}
+code{overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+<div class="eyebrow">Projeto acadêmico · dados públicos</div>
+<h1>Inovação nas empresas brasileiras</h1>
+<p>Painel inicial para explorar dados da Pesquisa de Inovação (PINTEC), com consulta à API oficial do SIDRA/IBGE. Os resultados só serão apresentados após uma consulta real.</p>
+</div></header>
+<main>
+<section class="grid">
+<div class="card"><h2>Fonte oficial</h2><p>IBGE — Pesquisa de Inovação (PINTEC).</p><a href="https://www.ibge.gov.br/estatisticas/multidominio/ciencia-tecnologia-e-inovacao/9141-pesquisa-de-inovacao.html" target="_blank" rel="noopener">Abrir página da PINTEC ↗</a></div>
+<div class="card"><h2>Consulta de dados</h2><p>O painel abaixo tenta consultar uma tabela do SIDRA. Confirme os metadados antes de interpretar os resultados.</p><a href="https://sidra.ibge.gov.br/" target="_blank" rel="noopener">Abrir SIDRA ↗</a></div>
+<div class="card"><h2>Transparência</h2><p>Este painel não preenche indicadores com números fictícios. Se a API falhar, a falha será mostrada na tela.</p></div>
+</section>
+<section class="card">
+<h2>Consultar a API</h2>
+<p class="small">URL inicial de consulta. O identificador da tabela e os períodos devem ser conferidos no SIDRA antes de usar os resultados no trabalho.</p>
+<label for="apiUrl">Endereço da API SIDRA</label>
+<input id="apiUrl" value="https://apisidra.ibge.gov.br/values/t/5018/n1/1/v/all/p/2008,2011,2014,2017" spellcheck="false">
+<button id="fetchBtn">Consultar API</button>
+<div id="status" class="status" role="status">Aguardando consulta. Clique no botão para buscar os dados.</div>
+</section>
+<section class="card">
+<h2>Dados retornados pela API</h2>
+<p class="small">A tabela exibirá os campos que a API realmente retornar. Verifique os nomes das colunas e metadados antes de produzir conclusões.</p>
+<div id="tableArea" class="table-wrap"><p>Nenhum dado consultado ainda.</p></div>
+</section>
+<section class="card">
+<h2>Como interpretar</h2>
+<p>Depois de confirmar a tabela e a variável, descreva o que o indicador mede, sua unidade, o período e o universo pesquisado. Compare períodos apenas quando a definição do indicador for compatível.</p>
+<p><strong>Limitação metodológica:</strong> a PINTEC tradicional e a PINTEC Semestral têm escopos e metodologias diferentes. Não trate seus resultados como uma única série sem justificar a comparação.</p>
+</section>
+</main>
+<footer><div class="wrap">Projeto acadêmico — fonte: IBGE/SIDRA. A data e o resultado da consulta serão registrados após o carregamento dos dados.</div></footer>
+<script>
+const btn = document.getElementById('fetchBtn');
+const statusBox = document.getElementById('status');
+const tableArea = document.getElementById('tableArea');
+function cellText(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  return String(value);
+}
+function renderTable(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    tableArea.innerHTML = '<p>A API respondeu, mas não retornou registros para esta consulta.</p>';
+    return;
+  }
+  const keys = [...new Set(rows.flatMap(row => Object.keys(row)))];
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  keys.forEach(key => { const th = document.createElement('th'); th.textContent = key; headerRow.appendChild(th); });
+  thead.appendChild(headerRow); table.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  rows.slice(0, 500).forEach(row => {
+    const tr = document.createElement('tr');
+    keys.forEach(key => { const td = document.createElement('td'); td.textContent = cellText(row[key]); tr.appendChild(td); });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  tableArea.replaceChildren(table);
+  if (rows.length > 500) {
+    const note = document.createElement('p'); note.textContent = `Exibindo os primeiros 500 de ${rows.length} registros.`; tableArea.appendChild(note);
+  }
+}
+btn.addEventListener('click', async () => {
+  const url = document.getElementById('apiUrl').value.trim();
+  if (!url.startsWith('https://apisidra.ibge.gov.br/')) {
+    statusBox.textContent = 'Por segurança, use um endereço HTTPS da API oficial apisidra.ibge.gov.br.';
+    return;
+  }
+  btn.disabled = true; statusBox.textContent = 'Consultando a API oficial…'; tableArea.innerHTML = '';
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`A API respondeu com status HTTP ${response.status}.`);
+    const data = await response.json();
+    if (!Array.isArray(data)) throw new Error('A resposta não veio no formato de lista esperado. Confira a URL e os parâmetros no SIDRA.');
+    renderTable(data);
+    statusBox.textContent = `Consulta realizada em ${new Date().toLocaleString('pt-BR')}. Registros retornados: ${data.length}. Confira os metadados antes de interpretar os valores.`;
+  } catch (error) {
+    statusBox.textContent = `Não foi possível concluir a consulta: ${error.message} Se necessário, abra a tabela no SIDRA, confira os parâmetros da API e tente novamente. Nenhum valor foi inventado ou substituído.`;
+    tableArea.innerHTML = '<p>Sem dados exibidos porque a consulta não foi validada.</p>';
+  } finally { btn.disabled = false; }
+});
+</script>
+</body>
+</html>
